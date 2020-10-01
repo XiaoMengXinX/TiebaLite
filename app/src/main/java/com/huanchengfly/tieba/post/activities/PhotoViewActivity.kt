@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.view.MenuItem
 import android.view.View
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
@@ -19,14 +18,13 @@ import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import butterknife.BindView
 import com.google.android.material.bottomappbar.BottomAppBar
-import com.huanchengfly.theme.utils.ThemeUtils
-import com.huanchengfly.tieba.api.TiebaApi.getInstance
-import com.huanchengfly.tieba.api.models.PicPageBean
-import com.huanchengfly.tieba.api.models.PicPageBean.ImgInfoBean
+import com.huanchengfly.tieba.post.ui.theme.utils.ThemeUtils
+import com.huanchengfly.tieba.post.api.TiebaApi.getInstance
+import com.huanchengfly.tieba.post.api.models.PicPageBean
+import com.huanchengfly.tieba.post.api.models.PicPageBean.ImgInfoBean
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.activities.base.BaseActivity
 import com.huanchengfly.tieba.post.adapters.PhotoViewAdapter
-import com.huanchengfly.tieba.post.base.Config
+import com.huanchengfly.tieba.post.BaseApplication.ScreenInfo
 import com.huanchengfly.tieba.post.fragments.PhotoViewFragment.OnChangeBottomBarVisibilityListener
 import com.huanchengfly.tieba.post.models.PhotoViewBean
 import com.huanchengfly.tieba.post.utils.AnimUtil
@@ -37,8 +35,6 @@ import retrofit2.Response
 import java.util.*
 
 class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, Toolbar.OnMenuItemClickListener {
-    @BindView(R.id.progressBar)
-    lateinit var progressBar: ProgressBar
     @BindView(R.id.counter)
     lateinit var mCounter: TextView
     @BindView(R.id.bottom_app_bar)
@@ -63,14 +59,12 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
 
     private fun loadMore() {
         if (loadFinished) {
-            progressBar.visibility = View.GONE
             return
         }
         if (mLoading) {
             return
         }
         mLoading = true
-        progressBar.visibility = View.VISIBLE
         val lastBean = photoViewBeans[photoViewBeans.size - 1]
         getInstance().picPage(
                 forumId!!,
@@ -84,19 +78,20 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
             override fun onResponse(call: Call<PicPageBean?>, response: Response<PicPageBean?>) {
                 val data = response.body()!!
                 mLoading = false
-                progressBar.visibility = View.GONE
                 amount = data.picAmount ?: "${photoViewBeans.size}"
                 updateCounter(mViewPager.currentItem)
                 val picBeans: MutableList<PicPageBean.PicBean> = ArrayList()
                 val imgInfoBeans: MutableList<ImgInfoBean> = ArrayList()
-                if (data.picList.isNotEmpty()) {
-                    val index = data.picList.last().overAllIndex.toInt()
-                    loadFinished = index >= amount!!.toInt()
+                if (data.picList?.isNotEmpty()!!) {
+                    val index = data.picList.last().overAllIndex?.toInt()
+                    if (index != null) {
+                        loadFinished = index >= amount!!.toInt()
+                    }
                     picBeans.addAll(data.picList)
                     picBeans.forEach {
-                        imgInfoBeans.add(it.img.original)
+                        it.img?.original?.let { it1 -> imgInfoBeans.add(it1) }
                     }
-                    lastIndex = picBeans.first().overAllIndex.toInt()
+                    lastIndex = picBeans.first().overAllIndex?.toInt()!!
                     for (photoViewBean in photoViewBeans) {
                         val ind = lastIndex - (photoViewBeans.size - 1 - photoViewBeans.indexOf(photoViewBean))
                         photoViewBean.index = ind.toString()
@@ -106,7 +101,7 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
                     val beans = imgInfoBeans.mapIndexed { i, it ->
                         PhotoViewBean(it.bigCdnSrc,
                                 it.originalSrc,
-                                (it.height ?: "0").toInt() > Config.EXACT_SCREEN_HEIGHT,
+                                (it.height ?: "0").toInt() > ScreenInfo.EXACT_SCREEN_HEIGHT,
                                 picBeans[i].overAllIndex,
                                 "2" == it.format)
                     }.toMutableList()
@@ -121,7 +116,6 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
 
             override fun onFailure(call: Call<PicPageBean?>, t: Throwable) {
                 mLoading = false
-                progressBar.visibility = View.GONE
             }
         })
     }
@@ -151,7 +145,7 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
         isFrs = intent.getBooleanExtra(EXTRA_IS_FRS, false)
         photoViewBeans = mutableListOf()
         startPosition = intent.getIntExtra(EXTRA_POSITION, 0)
-        val parcelables = intent.getParcelableArrayExtra(EXTRA_BEANS)
+        val parcelables = intent.getParcelableArrayExtra(EXTRA_BEANS)!!
         photoViewBeans.addAll(parcelables.map { it as PhotoViewBean })
         amount = photoViewBeans.size.toString()
         mAdapter = PhotoViewAdapter(this, photoViewBeans)
@@ -172,7 +166,6 @@ class PhotoViewActivity : BaseActivity(), OnChangeBottomBarVisibilityListener, T
             }
         })
         if (isFrs) {
-            progressBar.visibility = View.VISIBLE
             loadFrs()
         }
     }

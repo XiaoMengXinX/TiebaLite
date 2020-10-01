@@ -15,12 +15,12 @@ import butterknife.OnClick
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetBehavior.BottomSheetCallback
-import com.huanchengfly.tieba.api.TiebaApi
-import com.huanchengfly.tieba.api.models.SubFloorListBean
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ThreadActivity
 import com.huanchengfly.tieba.post.activities.ReplyActivity
+import com.huanchengfly.tieba.post.activities.ThreadActivity
 import com.huanchengfly.tieba.post.adapters.RecyclerFloorAdapter
+import com.huanchengfly.tieba.post.api.TiebaApi
+import com.huanchengfly.tieba.post.api.models.SubFloorListBean
 import com.huanchengfly.tieba.post.components.MyLinearLayoutManager
 import com.huanchengfly.tieba.post.components.dividers.ThreadDivider
 import com.huanchengfly.tieba.post.components.transformations.RadiusTransformation
@@ -73,7 +73,7 @@ class FloorFragment : BaseBottomSheetDialogFragment() {
                         dataBean!!.post!!.id,
                         dataBean!!.post!!.floor,
                         dataBean!!.post!!.author.nameShow,
-                        AccountUtil.getLoginInfo(attachContext).nameShow).setPn(pn.toString()).toString()))
+                        AccountUtil.getLoginInfo(attachContext)!!.nameShow).setPn(pn.toString()).toString()))
     }
 
     override fun onStart() {
@@ -102,6 +102,7 @@ class FloorFragment : BaseBottomSheetDialogFragment() {
     override fun initView() {
         ThemeUtil.setTranslucentThemeBackground(rootView.findViewById(R.id.background),
                 false,
+                false,
                 RadiusTransformation(attachContext,
                         8,
                         RadiusTransformation.CORNER_TOP_LEFT or RadiusTransformation.CORNER_TOP_RIGHT))
@@ -116,12 +117,12 @@ class FloorFragment : BaseBottomSheetDialogFragment() {
             setLoadingView(R.layout.layout_footer_loading)
             setLoadEndView(R.layout.layout_footer_loadend)
             setLoadFailedView(R.layout.layout_footer_load_failed)
-            setOnLoadMoreListener { loadMore(!it) }
+            setOnLoadMoreListener { load(it) }
         }
         recyclerView.apply {
-            adapter = recyclerViewAdapter
-            layoutManager = mLayoutManager
             addItemDecoration(ThreadDivider(attachContext))
+            layoutManager = mLayoutManager
+            adapter = recyclerViewAdapter
         }
         if (tid.isNotEmpty() && (pid.isNotEmpty() || !spid.isNullOrEmpty())) {
             refresh(jump)
@@ -175,8 +176,8 @@ class FloorFragment : BaseBottomSheetDialogFragment() {
                 })
     }
 
-    private fun loadMore(loadMore: Boolean) {
-        if (loadMore) {
+    private fun load(reload: Boolean) {
+        if (!reload) {
             pn += 1
         }
         TiebaApi.getInstance()
@@ -205,12 +206,12 @@ class FloorFragment : BaseBottomSheetDialogFragment() {
         const val PARAM_JUMP = "jump"
         @JvmStatic
         @JvmOverloads
-        fun newInstance(tid: String?, pid: String?, spid: String? = "", jump: Boolean = false): FloorFragment {
+        fun newInstance(tid: String?, pid: String?, spid: String? = null, jump: Boolean = false): FloorFragment {
             val fragment = FloorFragment()
             val bundle = Bundle()
             bundle.putString(PARAM_TID, tid)
             bundle.putString(PARAM_PID, pid)
-            bundle.putString(PARAM_SUB_POST_ID, spid)
+            bundle.putString(PARAM_SUB_POST_ID, spid ?: "")
             bundle.putBoolean(PARAM_JUMP, jump)
             fragment.arguments = bundle
             return fragment

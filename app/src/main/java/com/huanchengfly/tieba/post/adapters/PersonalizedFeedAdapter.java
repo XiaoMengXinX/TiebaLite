@@ -9,25 +9,19 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
 import androidx.cardview.widget.CardView;
 import androidx.gridlayout.widget.GridLayout;
-
 import com.bumptech.glide.Glide;
-import com.huanchengfly.tieba.api.models.ForumPageBean;
-import com.huanchengfly.tieba.api.models.PersonalizedBean;
-import com.huanchengfly.tieba.hotmessage.activities.HotMessageListActivity;
+import com.huanchengfly.tieba.post.api.models.ForumPageBean;
+import com.huanchengfly.tieba.post.api.models.PersonalizedBean;
+import com.huanchengfly.tieba.post.activities.HotMessageListActivity;
+import com.huanchengfly.tieba.post.BaseApplication;
 import com.huanchengfly.tieba.post.R;
-import com.huanchengfly.tieba.post.base.Config;
 import com.huanchengfly.tieba.post.components.dialogs.DislikeDialog;
 import com.huanchengfly.tieba.post.models.PhotoViewBean;
-import com.huanchengfly.tieba.post.utils.DisplayUtil;
-import com.huanchengfly.tieba.post.utils.ImageUtil;
-import com.huanchengfly.tieba.post.utils.NavigationHelper;
-import com.huanchengfly.tieba.post.utils.SharedPreferencesUtil;
-import com.huanchengfly.tieba.post.utils.Util;
-import com.huanchengfly.tieba.widgets.MarkedImageView;
-import com.huanchengfly.tieba.widgets.VideoPlayerStandard;
+import com.huanchengfly.tieba.post.utils.*;
+import com.huanchengfly.tieba.post.widgets.MarkedImageView;
+import com.huanchengfly.tieba.post.widgets.VideoPlayerStandard;
 import com.othershe.baseadapter.ViewHolder;
 import com.othershe.baseadapter.base.MultiBaseAdapter;
 
@@ -79,11 +73,11 @@ public class PersonalizedFeedAdapter extends MultiBaseAdapter<PersonalizedBean.T
     }
 
     private int getMaxWidth() {
-        return Config.EXACT_SCREEN_WIDTH - DisplayUtil.dp2px(mContext, 40);
+        return BaseApplication.ScreenInfo.EXACT_SCREEN_WIDTH - DisplayUtil.dp2px(mContext, 40);
     }
 
     private int getGridHeight() {
-        return (Config.EXACT_SCREEN_WIDTH - DisplayUtil.dp2px(mContext, 70)) / 3;
+        return (BaseApplication.ScreenInfo.EXACT_SCREEN_WIDTH - DisplayUtil.dp2px(mContext, 70)) / 3;
     }
 
     private RelativeLayout.LayoutParams getLayoutParams(RelativeLayout.LayoutParams layoutParams) {
@@ -168,7 +162,7 @@ public class PersonalizedFeedAdapter extends MultiBaseAdapter<PersonalizedBean.T
                 dislikeDialog.show();
             }
         });
-        if ("1".equals(threadBean.getIsGood())) {
+        if ("1".equals(threadBean.isGood())) {
             viewHolder.setVisibility(R.id.forum_item_good_tip, View.VISIBLE);
         } else {
             viewHolder.setVisibility(R.id.forum_item_good_tip, View.GONE);
@@ -178,7 +172,7 @@ public class PersonalizedFeedAdapter extends MultiBaseAdapter<PersonalizedBean.T
             map.put("tid", threadBean.getTid());
             navigationHelper.navigationByData(NavigationHelper.ACTION_THREAD, map);
         });
-        if ("1".equals(threadBean.getIsNoTitle())) {
+        if ("1".equals(threadBean.isNoTitle())) {
             viewHolder.setVisibility(R.id.forum_item_title_holder, View.GONE);
         } else {
             viewHolder.setVisibility(R.id.forum_item_title_holder, View.VISIBLE);

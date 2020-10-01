@@ -7,7 +7,6 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -21,16 +20,15 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.allen.library.SuperTextView;
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.bumptech.glide.request.RequestOptions;
-import com.huanchengfly.theme.utils.ThemeUtils;
-import com.huanchengfly.tieba.api.TiebaApi;
-import com.huanchengfly.tieba.api.models.CommonResponse;
-import com.huanchengfly.tieba.api.models.ThreadContentBean;
+import com.huanchengfly.tieba.post.BaseApplication;
 import com.huanchengfly.tieba.post.R;
+import com.huanchengfly.tieba.post.activities.BaseActivity;
 import com.huanchengfly.tieba.post.activities.ReplyActivity;
-import com.huanchengfly.tieba.post.activities.base.BaseActivity;
-import com.huanchengfly.tieba.post.base.Config;
+import com.huanchengfly.tieba.post.api.TiebaApi;
+import com.huanchengfly.tieba.post.api.models.CommonResponse;
+import com.huanchengfly.tieba.post.api.models.ThreadContentBean;
+import com.huanchengfly.tieba.post.components.LinkMovementClickMethod;
+import com.huanchengfly.tieba.post.components.LinkTouchMovementMethod;
 import com.huanchengfly.tieba.post.components.spans.MyImageSpan;
 import com.huanchengfly.tieba.post.components.spans.MyURLSpan;
 import com.huanchengfly.tieba.post.components.spans.MyUserSpan;
@@ -40,7 +38,9 @@ import com.huanchengfly.tieba.post.fragments.FloorFragment;
 import com.huanchengfly.tieba.post.fragments.MenuDialogFragment;
 import com.huanchengfly.tieba.post.models.PhotoViewBean;
 import com.huanchengfly.tieba.post.models.ReplyInfoBean;
+import com.huanchengfly.tieba.post.ui.theme.utils.ThemeUtils;
 import com.huanchengfly.tieba.post.utils.AccountUtil;
+import com.huanchengfly.tieba.post.utils.BilibiliUtil;
 import com.huanchengfly.tieba.post.utils.BlockUtil;
 import com.huanchengfly.tieba.post.utils.DisplayUtil;
 import com.huanchengfly.tieba.post.utils.EmotionUtil;
@@ -49,11 +49,12 @@ import com.huanchengfly.tieba.post.utils.NavigationHelper;
 import com.huanchengfly.tieba.post.utils.StringUtil;
 import com.huanchengfly.tieba.post.utils.ThemeUtil;
 import com.huanchengfly.tieba.post.utils.Util;
-import com.huanchengfly.tieba.widgets.ContentLayout;
-import com.huanchengfly.tieba.widgets.MyImageView;
-import com.huanchengfly.tieba.widgets.VideoPlayerStandard;
-import com.huanchengfly.tieba.widgets.VoicePlayerView;
-import com.huanchengfly.tieba.widgets.theme.TintTextView;
+import com.huanchengfly.tieba.post.widgets.MyImageView;
+import com.huanchengfly.tieba.post.widgets.MyLinearLayout;
+import com.huanchengfly.tieba.post.widgets.VideoPlayerStandard;
+import com.huanchengfly.tieba.post.widgets.VoicePlayerView;
+import com.huanchengfly.tieba.post.widgets.theme.TintMySpannableTextView;
+import com.huanchengfly.tieba.post.widgets.theme.TintTextView;
 import com.othershe.baseadapter.ViewHolder;
 import com.othershe.baseadapter.base.MultiBaseAdapter;
 
@@ -78,12 +79,11 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
     public static final int TYPE_THREAD = 1001;
     private static final int TEXT_VIEW_TYPE_CONTENT = 0;
     private static final int TEXT_VIEW_TYPE_FLOOR = 1;
+    public static final int MAX_SUB_POST_SHOW = 3;
     private Map<String, ThreadContentBean.UserInfoBean> userInfoBeanMap;
     private NavigationHelper navigationHelper;
-    private RequestOptions avatarRequestOptions;
     private LinearLayout.LayoutParams defaultLayoutParams;
-    private RequestOptions defaultRequestOptions;
-    private DrawableTransitionOptions transitionOptions;
+    private LinearLayout.LayoutParams defaultLayoutParamsWithNoMargins;
     private ThreadContentBean.ThreadBean threadBean;
     private ThreadContentBean dataBean;
     private TreeMap<Integer, List<PhotoViewBean>> photoViewBeansMap;
@@ -112,19 +112,12 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
         });
         showForum = true;
         userInfoBeanMap = new HashMap<>();
-        avatarRequestOptions = new RequestOptions()
-                .placeholder(R.drawable.bg_placeholder_circle)
-                .circleCrop()
-                .skipMemoryCache(true);
         navigationHelper = NavigationHelper.newInstance(mContext);
         immersive = false;
-        this.screenWidthPx = Config.EXACT_SCREEN_WIDTH;
+        this.screenWidthPx = BaseApplication.ScreenInfo.EXACT_SCREEN_WIDTH;
         defaultLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         defaultLayoutParams.setMargins(0, 8, 0, 8);
-        defaultRequestOptions = new RequestOptions()
-                .placeholder(R.drawable.bg_placeholder)
-                .skipMemoryCache(true);
-        transitionOptions = DrawableTransitionOptions.withCrossFade();
+        defaultLayoutParamsWithNoMargins = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         photoViewBeansMap = new TreeMap<>();
         blockCacheMap = new HashMap<>();
     }
@@ -175,7 +168,7 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
         if (forumView == null || dividerView == null || forumInfoBean == null) {
             return;
         }
-        if (!showForum || !mContext.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("showShortcutInThread", true) || "0".equals(forumInfoBean.getIsExists()) || forumInfoBean.getName().isEmpty()) {
+        if (!showForum || !mContext.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("showShortcutInThread", true) || "0".equals(forumInfoBean.isExists()) || forumInfoBean.getName().isEmpty()) {
             forumView.setVisibility(View.GONE);
             dividerView.setVisibility(View.GONE);
             return;
@@ -217,7 +210,7 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
     }
 
     private void setPic(List<ThreadContentBean.PostListItemBean> postListItemBeans) {
-        photoViewBeansMap = new TreeMap<Integer, List<PhotoViewBean>>();
+        photoViewBeansMap = new TreeMap<>();
         addPic(postListItemBeans);
     }
 
@@ -233,7 +226,7 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
                     if (contentBean.getType().equals("3")) {
                         photoViewBeans.add(new PhotoViewBean(url,
                                 ImageUtil.getNonNullString(contentBean.getOriginSrc(), contentBean.getBigCdnSrc(), contentBean.getCdnSrcActive(), contentBean.getCdnSrc()),
-                                "1".equals(contentBean.getIsLongPic())));
+                                "1".equals(contentBean.isLongPic())));
                     }/* else if (contentBean.getType().equals("20")) {
                         photoViewBeans.add(new PhotoViewBean(contentBean.getSrc(), contentBean.getSrc(), false));
                     }
@@ -260,24 +253,22 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
             builder.append(userInfoBean.getNameShow(), new MyUserSpan(mContext, userInfoBean.getId()), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (threadBean.getAuthor() != null && userInfoBean.getId() != null && userInfoBean.getId().equals(threadBean.getAuthor().getId())) {
                 builder.append(" ");
-                int start = builder.length();
                 builder.append("楼主", new RoundBackgroundColorSpan(mContext,
                         alphaColor(ThemeUtils.getColorByAttr(mContext, R.attr.colorAccent), 30),
                         ThemeUtils.getColorByAttr(mContext, R.attr.colorAccent),
                         DisplayUtil.dp2px(mContext, 10)), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                //builder.setSpan(new TextAppearanceSpan("serif", Typeface.BOLD, DisplayUtil.dp2px(mContext, 10), ColorStateList.valueOf(Color.WHITE), ColorStateList.valueOf(Color.WHITE)), start, start + "楼主".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 builder.append(" ");
             }
             builder.append(":");
         }
-        if (subPostListItemBean.getContent().size() >= 1 && "10".equals(subPostListItemBean.getContent().get(0).getType())) {
+        if (subPostListItemBean.getContent().size() > 0 && "10".equals(subPostListItemBean.getContent().get(0).getType())) {
             String voiceUrl = "http://c.tieba.baidu.com/c/p/voice?voice_md5=" + subPostListItemBean.getContent().get(0).getVoiceMD5() + "&play_from=pb_voice_play";
             RelativeLayout container = new RelativeLayout(mContext);
-            container.setLayoutParams(defaultLayoutParams);
+            container.setLayoutParams(defaultLayoutParamsWithNoMargins);
             container.setPadding(DisplayUtil.dp2px(mContext, 8),
-                    1,
+                    8,
                     DisplayUtil.dp2px(mContext, 8),
-                    1);
+                    8);
             container.setBackground(Util.getDrawableByAttr(mContext, R.attr.selectableItemBackground));
             container.setOnClickListener(view -> mContext.startActivity(new Intent(mContext, ReplyActivity.class)
                     .putExtra("data", new ReplyInfoBean(dataBean.getThread().getId(),
@@ -303,7 +294,7 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
             return container;
         }
         TextView textView = createTextView(TEXT_VIEW_TYPE_FLOOR);
-        textView.setLayoutParams(defaultLayoutParams);
+        textView.setLayoutParams(defaultLayoutParamsWithNoMargins);
         for (ThreadContentBean.ContentBean contentBean : subPostListItemBean.getContent()) {
             switch (contentBean.getType()) {
                 case "0":
@@ -320,17 +311,18 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
                     builder.append(emojiText);
                     break;
                 case "4":
+                case "9":
                     builder.append(contentBean.getText());
                     break;
                 default:
                     break;
             }
         }
-        textView.setText(StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, builder));
+        textView.setText(BilibiliUtil.replaceVideoNumberSpan(mContext, StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, builder)));
         textView.setPadding(DisplayUtil.dp2px(mContext, 8),
-                1,
+                8,
                 DisplayUtil.dp2px(mContext, 8),
-                1);
+                8);
         textView.setBackground(Util.getDrawableByAttr(mContext, R.attr.selectableItemBackground));
         textView.setOnClickListener(view -> mContext.startActivity(new Intent(mContext, ReplyActivity.class)
                 .putExtra("data", new ReplyInfoBean(dataBean.getThread().getId(),
@@ -351,16 +343,17 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
 
     private void initFloorView(ViewHolder holder, ThreadContentBean.PostListItemBean bean) {
         TextView more = holder.getView(R.id.thread_list_item_content_floor_more);
-        ContentLayout contentLayout = holder.getView(R.id.thread_list_item_content_floor);
-        contentLayout.removeAllViews();
-        if (bean.getSubPostList().getSubPostList() != null && bean.getSubPostList().getSubPostList().size() > 0) {
+        MyLinearLayout myLinearLayout = holder.getView(R.id.thread_list_item_content_floor);
+        myLinearLayout.removeAllViews();
+        if (bean.getSubPostNumber() != null && bean.getSubPostList() != null && bean.getSubPostList().getSubPostList() != null && bean.getSubPostList().getSubPostList().size() > 0) {
             holder.setVisibility(R.id.thread_list_item_content_floor_card, View.VISIBLE);
-            int count = Integer.valueOf(bean.getSubPostNumber());
-            List<ThreadContentBean.PostListItemBean> postListItemBeans = bean.getSubPostList().getSubPostList();
-            List<ThreadContentBean.PostListItemBean> subPostList = postListItemBeans;
+            int count = Integer.parseInt(bean.getSubPostNumber());
+            List<ThreadContentBean.PostListItemBean> subPostList = bean.getSubPostList().getSubPostList();
             List<View> views = new ArrayList<>();
-            if (postListItemBeans.size() > 3) {
-                subPostList = subPostList.subList(0, 3);
+            if (subPostList.size() > MAX_SUB_POST_SHOW) {
+                subPostList = subPostList.subList(0, MAX_SUB_POST_SHOW);
+                holder.setVisibility(R.id.thread_list_item_content_floor_more, View.VISIBLE);
+            } else if (subPostList.size() < count) {
                 holder.setVisibility(R.id.thread_list_item_content_floor_more, View.VISIBLE);
             } else {
                 holder.setVisibility(R.id.thread_list_item_content_floor_more, View.GONE);
@@ -369,31 +362,28 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
             for (ThreadContentBean.PostListItemBean postListItemBean : subPostList) {
                 views.add(getContentView(postListItemBean, bean));
             }
+            myLinearLayout.addViews(views);
             more.setOnClickListener(view -> {
                 try {
-                    if (postListItemBeans.size() < Integer.parseInt(bean.getSubPostNumber())) {
-                        FloorFragment.newInstance(threadBean.getId(), bean.getSubPostList().getPid(), "", true).show(((BaseActivity) mContext).getSupportFragmentManager(), threadBean.getId() + "_Floor");
+                    if (bean.getSubPostList().getSubPostList().size() < count) {
+                        FloorFragment.newInstance(threadBean.getId(), bean.getSubPostList().getPid(), null, true)
+                                .show(((BaseActivity) mContext).getSupportFragmentManager(), threadBean.getId() + "_Floor");
                     } else {
-                        contentLayout.removeAllViews();
+                        myLinearLayout.removeAllViews();
                         List<View> newViews = new ArrayList<>();
-                        for (ThreadContentBean.PostListItemBean postListItemBean : postListItemBeans) {
+                        for (ThreadContentBean.PostListItemBean postListItemBean : bean.getSubPostList().getSubPostList()) {
                             newViews.add(getContentView(postListItemBean, bean));
                         }
-                        contentLayout.addViews(newViews);
+                        myLinearLayout.addViews(newViews);
                         more.setVisibility(View.GONE);
                     }
                 } catch (NumberFormatException e) {
                     e.printStackTrace();
                 }
             });
-            contentLayout.addViews(views);
         } else {
             holder.setVisibility(R.id.thread_list_item_content_floor_card, View.GONE);
         }
-    }
-
-    private boolean canLoadGlide() {
-        return Util.canLoadGlide(mContext);
     }
 
     private int getMaxWidth(String floor) {
@@ -574,7 +564,7 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
         holder.setText(R.id.thread_list_item_user_time, mContext.getString(R.string.tip_thread_item, data.getFloor(), String.valueOf(DateUtils.getRelativeTimeSpanString(Long.valueOf(data.getTime()) * 1000L))));
         holder.setText(R.id.thread_list_item_content_title, data.getTitle());
         holder.setOnClickListener(R.id.thread_list_item_reply, view -> showMenu(data, position));
-        if (data.getFloor().equals("1"))
+        if ("1".equals(data.getFloor()))
             holder.setVisibility(R.id.thread_list_item_reply, View.GONE);
         else
             holder.setVisibility(R.id.thread_list_item_reply, View.VISIBLE);
@@ -590,11 +580,11 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
             });
             ImageUtil.load(holder.getView(R.id.thread_list_item_user_avatar), ImageUtil.LOAD_TYPE_AVATAR, userInfoBean.getPortrait());
         }
-        if (!data.getFloor().equals("1"))
+        if (!"1".equals(data.getFloor()))
             holder.setVisibility(R.id.thread_list_item_content_title, View.GONE);
         else
             holder.setVisibility(R.id.thread_list_item_content_title, View.VISIBLE);
-        initContentView(holder, data);
+        initContentView(holder, data, position);
         initFloorView(holder, data);
         if (isImmersive()) {
             holder.getView(R.id.thread_list_item_content).setPadding(DisplayUtil.dp2px(mContext, 4), 0, DisplayUtil.dp2px(mContext, 4), 0);
@@ -693,15 +683,24 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
     }
 
     private TextView createTextView(int type) {
-        TintTextView textView = new TintTextView(mContext);
-        textView.setMovementMethod(LinkMovementMethod.getInstance());
-        textView.setClickable(false);
+        TextView textView;
+        if (type == TEXT_VIEW_TYPE_CONTENT) {
+            TintMySpannableTextView mySpannableTextView = new TintMySpannableTextView(mContext);
+            mySpannableTextView.setTintResId(R.color.default_color_text);
+            mySpannableTextView.setLinkTouchMovementMethod(LinkTouchMovementMethod.getInstance());
+            textView = mySpannableTextView;
+        } else {
+            TintTextView tintTextView = new TintTextView(mContext);
+            tintTextView.setTintResId(R.color.default_color_text);
+            tintTextView.setMovementMethod(LinkMovementClickMethod.getInstance());
+            textView = tintTextView;
+        }
         textView.setFocusable(false);
-        textView.setFocusableInTouchMode(false);
+        textView.setClickable(false);
+        textView.setLongClickable(false);
         textView.setTextIsSelectable(false);
         textView.setOnClickListener(null);
         textView.setOnLongClickListener(null);
-        textView.setTintResId(R.color.default_color_text);
         textView.setLetterSpacing(0.02F);
         if (type == TEXT_VIEW_TYPE_CONTENT) {
             textView.setTextSize(16);
@@ -715,11 +714,13 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
     }
 
     private void setText(TextView textView, CharSequence content) {
-        textView.setText(StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, content));
+        content = BilibiliUtil.replaceVideoNumberSpan(mContext, content);
+        content = StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, content);
+        textView.setText(content);
     }
 
     private LinearLayout.LayoutParams getLayoutParams(ThreadContentBean.ContentBean contentBean, String floor) {
-        if (!contentBean.getType().equals("3") && !contentBean.getType().equals("20") && !contentBean.getType().equals("5")) {
+        if (!"3".equals(contentBean.getType()) && !"20".equals(contentBean.getType()) && !"5".equals(contentBean.getType())) {
             return defaultLayoutParams;
         }
         float widthFloat, heightFloat;
@@ -777,11 +778,12 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
         return false;
     }
 
-    private List<View> getContentViews(ThreadContentBean.PostListItemBean postListItemBean) {
+    private List<View> getContentViews(ThreadContentBean.PostListItemBean postListItemBean, int position) {
         List<View> views = new ArrayList<>();
         for (ThreadContentBean.ContentBean contentBean : postListItemBean.getContent()) {
             switch (contentBean.getType()) {
-                case "0": {
+                case "0":
+                case "9": {
                     if (appendTextToLastTextView(views, contentBean.getText())) {
                         TextView textView = createTextView(TEXT_VIEW_TYPE_CONTENT);
                         textView.setLayoutParams(getLayoutParams(contentBean, postListItemBean.getFloor()));
@@ -893,10 +895,10 @@ public class RecyclerThreadAdapter extends MultiBaseAdapter<ThreadContentBean.Po
         return views;
     }
 
-    private void initContentView(ViewHolder viewHolder, ThreadContentBean.PostListItemBean postListItemBean) {
-        ContentLayout contentLayout = viewHolder.getView(R.id.thread_list_item_content_content);
-        contentLayout.removeAllViews();
-        contentLayout.addViews(getContentViews(postListItemBean));
+    private void initContentView(ViewHolder viewHolder, ThreadContentBean.PostListItemBean postListItemBean, int position) {
+        MyLinearLayout myLinearLayout = viewHolder.getView(R.id.thread_list_item_content_content);
+        myLinearLayout.removeAllViews();
+        myLinearLayout.addViews(getContentViews(postListItemBean, position));
     }
 
     @Override

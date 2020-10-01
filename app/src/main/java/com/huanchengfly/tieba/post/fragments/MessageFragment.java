@@ -11,10 +11,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.material.tabs.TabLayout;
-import com.huanchengfly.tieba.api.TiebaApi;
-import com.huanchengfly.tieba.api.models.MessageListBean;
-import com.huanchengfly.tieba.api.retrofit.exception.TiebaException;
-import com.huanchengfly.tieba.post.MainActivity;
+import com.huanchengfly.tieba.post.api.TiebaApi;
+import com.huanchengfly.tieba.post.api.models.MessageListBean;
+import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaException;
+import com.huanchengfly.tieba.post.activities.MainActivity;
 import com.huanchengfly.tieba.post.R;
 import com.huanchengfly.tieba.post.adapters.MessageListAdapter;
 import com.huanchengfly.tieba.post.adapters.TabViewPagerAdapter;
@@ -24,7 +24,7 @@ import com.huanchengfly.tieba.post.interfaces.Refreshable;
 import com.huanchengfly.tieba.post.utils.DisplayUtil;
 import com.huanchengfly.tieba.post.utils.ThemeUtil;
 import com.huanchengfly.tieba.post.utils.Util;
-import com.huanchengfly.tieba.widgets.theme.TintImageView;
+import com.huanchengfly.tieba.post.widgets.theme.TintImageView;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -40,19 +40,26 @@ public class MessageFragment extends BaseFragment implements View.OnClickListene
     public static final String TAG = MessageFragment.class.getSimpleName();
 
     private static final String PARAM_TYPE = "type";
+    public static final String PARAM_FROM_NOTIFICATION = "from_notification";
     @BindView(R.id.fragment_message_tab)
     TabLayout tabLayout;
     private MessageListHelper replyMe;
     private MessageListHelper atMe;
     private int type;
+    private boolean isFromNotification;
 
     public MessageFragment() {
     }
 
     public static MessageFragment newInstance(int type) {
+        return newInstance(type, false);
+    }
+
+    public static MessageFragment newInstance(int type, boolean isFromNotification) {
         MessageFragment fragment = new MessageFragment();
         Bundle bundle = new Bundle();
         bundle.putInt(PARAM_TYPE, type);
+        bundle.putBoolean(PARAM_FROM_NOTIFICATION, isFromNotification);
         fragment.setArguments(bundle);
         return fragment;
     }
@@ -79,6 +86,7 @@ public class MessageFragment extends BaseFragment implements View.OnClickListene
         Bundle args = getArguments();
         if (args != null) {
             type = args.getInt(PARAM_TYPE, TYPE_REPLY_ME);
+            isFromNotification = args.getBoolean(PARAM_FROM_NOTIFICATION, false);
         }
     }
 
@@ -107,6 +115,9 @@ public class MessageFragment extends BaseFragment implements View.OnClickListene
         tabLayout.setupWithViewPager(viewPager);
         tabLayout.addOnTabSelectedListener(this);
         viewPager.setCurrentItem(type, false);
+        if (isFromNotification) {
+            refreshIfNeed();
+        }
     }
 
     @Override

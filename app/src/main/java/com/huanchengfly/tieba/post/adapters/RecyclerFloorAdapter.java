@@ -7,9 +7,9 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -18,13 +18,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.request.RequestOptions;
-import com.huanchengfly.tieba.api.TiebaApi;
-import com.huanchengfly.tieba.api.models.CommonResponse;
-import com.huanchengfly.tieba.api.models.SubFloorListBean;
-import com.huanchengfly.tieba.api.models.ThreadContentBean;
 import com.huanchengfly.tieba.post.R;
+import com.huanchengfly.tieba.post.activities.BaseActivity;
 import com.huanchengfly.tieba.post.activities.ReplyActivity;
-import com.huanchengfly.tieba.post.activities.base.BaseActivity;
+import com.huanchengfly.tieba.post.api.TiebaApi;
+import com.huanchengfly.tieba.post.api.models.CommonResponse;
+import com.huanchengfly.tieba.post.api.models.SubFloorListBean;
+import com.huanchengfly.tieba.post.api.models.ThreadContentBean;
+import com.huanchengfly.tieba.post.components.LinkMovementClickMethod;
+import com.huanchengfly.tieba.post.components.LinkTouchMovementMethod;
 import com.huanchengfly.tieba.post.components.spans.MyURLSpan;
 import com.huanchengfly.tieba.post.components.spans.MyUserSpan;
 import com.huanchengfly.tieba.post.fragments.ConfirmDialogFragment;
@@ -32,15 +34,17 @@ import com.huanchengfly.tieba.post.fragments.MenuDialogFragment;
 import com.huanchengfly.tieba.post.models.PhotoViewBean;
 import com.huanchengfly.tieba.post.models.ReplyInfoBean;
 import com.huanchengfly.tieba.post.utils.AccountUtil;
+import com.huanchengfly.tieba.post.utils.BilibiliUtil;
 import com.huanchengfly.tieba.post.utils.EmotionUtil;
 import com.huanchengfly.tieba.post.utils.ImageUtil;
 import com.huanchengfly.tieba.post.utils.NavigationHelper;
 import com.huanchengfly.tieba.post.utils.StringUtil;
 import com.huanchengfly.tieba.post.utils.ThemeUtil;
 import com.huanchengfly.tieba.post.utils.Util;
-import com.huanchengfly.tieba.widgets.ContentLayout;
-import com.huanchengfly.tieba.widgets.VoicePlayerView;
-import com.huanchengfly.tieba.widgets.theme.TintTextView;
+import com.huanchengfly.tieba.post.widgets.MyLinearLayout;
+import com.huanchengfly.tieba.post.widgets.VoicePlayerView;
+import com.huanchengfly.tieba.post.widgets.theme.TintMySpannableTextView;
+import com.huanchengfly.tieba.post.widgets.theme.TintTextView;
 import com.othershe.baseadapter.ViewHolder;
 import com.othershe.baseadapter.base.CommonBaseAdapter;
 
@@ -234,15 +238,25 @@ public class RecyclerFloorAdapter extends CommonBaseAdapter<SubFloorListBean.Pos
     }
 
     private TextView createTextView(int type) {
-        TintTextView textView = new TintTextView(mContext);
-        textView.setMovementMethod(LinkMovementMethod.getInstance());
-        textView.setClickable(false);
+        TextView textView;
+        if (type == TEXT_VIEW_TYPE_CONTENT) {
+            TintMySpannableTextView mySpannableTextView = new TintMySpannableTextView(mContext);
+            mySpannableTextView.setTintResId(R.color.default_color_text);
+            mySpannableTextView.setLinkTouchMovementMethod(LinkTouchMovementMethod.getInstance());
+            textView = mySpannableTextView;
+        } else {
+            TintTextView tintTextView = new TintTextView(mContext);
+            tintTextView.setTintResId(R.color.default_color_text);
+            tintTextView.setMovementMethod(LinkMovementClickMethod.getInstance());
+            textView = tintTextView;
+        }
         textView.setFocusable(false);
-        textView.setFocusableInTouchMode(false);
+        textView.setClickable(false);
+        textView.setLongClickable(false);
         textView.setTextIsSelectable(false);
         textView.setOnClickListener(null);
         textView.setOnLongClickListener(null);
-        textView.setTintResId(R.color.default_color_text);
+        textView.setLetterSpacing(0.02F);
         if (type == TEXT_VIEW_TYPE_CONTENT) {
             textView.setTextSize(16);
         }
@@ -250,29 +264,32 @@ public class RecyclerFloorAdapter extends CommonBaseAdapter<SubFloorListBean.Pos
     }
 
     private void setText(TextView textView, CharSequence content) {
-        textView.setText(StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, content));
+        content = BilibiliUtil.replaceVideoNumberSpan(mContext, content);
+        content = StringUtil.getEmotionContent(EmotionUtil.EMOTION_ALL_TYPE, textView, content);
+        textView.setText(content);
     }
 
     private LinearLayout.LayoutParams getLayoutParams(ThreadContentBean.ContentBean contentBean) {
         if (!contentBean.getType().equals("3") && !contentBean.getType().equals("5")) {
             return defaultLayoutParams;
         }
-        Float widthFloat, heightFloat = 0F;
-        if (contentBean.getType().equals("3")) {
+        float widthFloat, heightFloat;
+        if (contentBean.getType().equals("3") || contentBean.getType().equals("20")) {
             String[] strings = contentBean.getBsize().split(",");
-            widthFloat = Float.valueOf(strings[0]);
-            heightFloat = Float.valueOf(strings[1]);
-        } else {
-            widthFloat = Float.valueOf(contentBean.getWidth());
-            heightFloat = Float.valueOf(contentBean.getHeight());
-        }
-        if (widthFloat >= this.maxWidth) {
-            heightFloat = heightFloat * (this.maxWidth / widthFloat);
+            widthFloat = Float.parseFloat(strings[0]);
+            heightFloat = Float.parseFloat(strings[1]);
+            heightFloat *= this.maxWidth / widthFloat;
             widthFloat = this.maxWidth;
+        } else {
+            float width = Float.parseFloat(contentBean.getWidth());
+            widthFloat = this.maxWidth;
+            heightFloat = Float.parseFloat(contentBean.getHeight());
+            heightFloat *= widthFloat / width;
         }
         int width = Math.round(widthFloat);
         int height = Math.round(heightFloat);
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL;
         layoutParams.setMargins(0, 8, 0, 8);
         return layoutParams;
     }
@@ -338,7 +355,8 @@ public class RecyclerFloorAdapter extends CommonBaseAdapter<SubFloorListBean.Pos
         List<View> views = new ArrayList<>();
         for (ThreadContentBean.ContentBean contentBean : postListItemBean.getContent()) {
             switch (contentBean.getType()) {
-                case "0": {
+                case "0":
+                case "9": {
                     if (appendTextToLastTextView(views, contentBean.getText())) {
                         TextView textView = createTextView(TEXT_VIEW_TYPE_CONTENT);
                         textView.setLayoutParams(getLayoutParams(contentBean));
@@ -370,9 +388,9 @@ public class RecyclerFloorAdapter extends CommonBaseAdapter<SubFloorListBean.Pos
                     imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
                     ImageUtil.load(imageView, ImageUtil.LOAD_TYPE_SMALL_PIC, contentBean.getSrc());
                     List<PhotoViewBean> photoViewBeans = new ArrayList<>();
-                    photoViewBeans.add(new PhotoViewBean(ImageUtil.getNonNullString(contentBean.getCdnSrc(), contentBean.getCdnSrcActive(), contentBean.getBigCdnSrc(), contentBean.getOriginSrc()),
-                            ImageUtil.getNonNullString(contentBean.getOriginSrc(), contentBean.getBigCdnSrc(), contentBean.getCdnSrcActive(), contentBean.getCdnSrc()),
-                            "1".equals(contentBean.getIsLongPic())));
+                    photoViewBeans.add(new PhotoViewBean(ImageUtil.getNonNullString(contentBean.getSrc(), contentBean.getOriginSrc()),
+                            ImageUtil.getNonNullString(contentBean.getOriginSrc(), contentBean.getSrc()),
+                            "1".equals(contentBean.isLongPic())));
                     ImageUtil.initImageView(imageView, photoViewBeans, 0);
                     views.add(imageView);
                     break;
@@ -399,8 +417,8 @@ public class RecyclerFloorAdapter extends CommonBaseAdapter<SubFloorListBean.Pos
     }
 
     private void initContentView(ViewHolder viewHolder, SubFloorListBean.PostInfo postListItemBean) {
-        ContentLayout contentLayout = viewHolder.getView(R.id.thread_list_item_content_content);
-        contentLayout.removeAllViews();
-        contentLayout.addViews(getContentViews(postListItemBean));
+        MyLinearLayout myLinearLayout = viewHolder.getView(R.id.thread_list_item_content_content);
+        myLinearLayout.removeAllViews();
+        myLinearLayout.addViews(getContentViews(postListItemBean));
     }
 }

@@ -7,18 +7,18 @@ import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup
 import androidx.recyclerview.widget.RecyclerView
-import com.huanchengfly.tieba.api.TiebaApi
-import com.huanchengfly.tieba.api.models.CommonResponse
-import com.huanchengfly.tieba.api.models.PersonalizedBean.ThreadPersonalizedBean
+import com.huanchengfly.tieba.post.api.TiebaApi
+import com.huanchengfly.tieba.post.api.models.CommonResponse
+import com.huanchengfly.tieba.post.api.models.PersonalizedBean.ThreadPersonalizedBean
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.adapters.DislikeAdapter
 import com.huanchengfly.tieba.post.components.dividers.SpacesItemDecoration
 import com.huanchengfly.tieba.post.models.DislikeBean
 import com.huanchengfly.tieba.post.utils.AccountUtil
+import com.huanchengfly.tieba.post.toDp
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import com.huanchengfly.toDp
 import java.util.*
 
 class DislikeDialog(
@@ -53,11 +53,11 @@ class DislikeDialog(
         if (v.id == R.id.submit_btn) {
             val selectIds: MutableList<String> = ArrayList()
             val extras: MutableList<String> = ArrayList()
-            threadPersonalizedBean.dislikeResource.filter {
+            threadPersonalizedBean.dislikeResource?.filter {
                 dislikeAdapter!!.selectedIds.contains(it.dislikeId)
-            }.forEach {
-                selectIds.add(it.dislikeId)
-                extras.add(it.extra)
+            }?.forEach {
+                it.dislikeId?.let { it1 -> selectIds.add(it1) }
+                it.extra?.let { it1 -> extras.add(it1) }
             }
             TiebaApi.getInstance().submitDislike(
                     DislikeBean(

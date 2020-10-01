@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.fragments
 
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,11 +12,11 @@ import cn.jzvd.Jzvd
 import com.billy.android.preloader.PreLoader
 import com.billy.android.preloader.interfaces.DataListener
 import com.bumptech.glide.Glide
-import com.huanchengfly.tieba.api.ForumSortType
-import com.huanchengfly.tieba.api.ForumSortType.Companion.valueOf
-import com.huanchengfly.tieba.api.TiebaApi
-import com.huanchengfly.tieba.api.models.ForumPageBean
-import com.huanchengfly.tieba.api.retrofit.exception.TiebaException
+import com.huanchengfly.tieba.post.api.ForumSortType
+import com.huanchengfly.tieba.post.api.ForumSortType.Companion.valueOf
+import com.huanchengfly.tieba.post.api.TiebaApi
+import com.huanchengfly.tieba.post.api.models.ForumPageBean
+import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaException
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.adapters.ForumAdapter
 import com.huanchengfly.tieba.post.components.MyLinearLayoutManager
@@ -26,7 +25,7 @@ import com.huanchengfly.tieba.post.interfaces.OnSwitchListener
 import com.huanchengfly.tieba.post.interfaces.Refreshable
 import com.huanchengfly.tieba.post.interfaces.ScrollTopable
 import com.huanchengfly.tieba.post.utils.Util
-import com.huanchengfly.tieba.widgets.VideoPlayerStandard
+import com.huanchengfly.tieba.post.widgets.VideoPlayerStandard
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -127,21 +126,23 @@ class ForumFragment : BaseFragment(), Refreshable, OnSwitchListener, ScrollTopab
             layoutManager = MyLinearLayoutManager(attachContext)
             addItemDecoration(ForumDivider(attachContext, LinearLayoutManager.VERTICAL))
             adapter = mAdapter
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                    super.onScrollStateChanged(recyclerView, newState)
-                    if (!Util.canLoadGlide(attachContext)) {
-                        return
+            if (!appPreferences.loadPictureWhenScroll) {
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        super.onScrollStateChanged(recyclerView, newState)
+                        if (!Util.canLoadGlide(attachContext)) {
+                            return
+                        }
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                            Glide.with(attachContext)
+                                    .resumeRequests()
+                        } else {
+                            Glide.with(attachContext)
+                                    .pauseRequests()
+                        }
                     }
-                    if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                        Glide.with(attachContext)
-                                .resumeRequests()
-                    } else {
-                        Glide.with(attachContext)
-                                .pauseRequests()
-                    }
-                }
-            })
+                })
+            }
             addOnChildAttachStateChangeListener(object : OnChildAttachStateChangeListener {
                 override fun onChildViewAttachedToWindow(view: View) {}
                 override fun onChildViewDetachedFromWindow(view: View) {
@@ -169,9 +170,9 @@ class ForumFragment : BaseFragment(), Refreshable, OnSwitchListener, ScrollTopab
             override fun onResponse(call: Call<ForumPageBean>, response: Response<ForumPageBean>) {
                 val forumPageBean = response.body()!!
                 mDataBean = forumPageBean
-                pageSize = forumPageBean.page.pageSize.toInt()
+                pageSize = forumPageBean.page?.pageSize?.toInt()!!
                 mAdapter.addData(forumPageBean)
-                if (mDataBean!!.page.hasMore == "0") {
+                if (mDataBean!!.page?.hasMore == "0") {
                     mAdapter.loadEnd()
                 }
             }
@@ -210,8 +211,8 @@ class ForumFragment : BaseFragment(), Refreshable, OnSwitchListener, ScrollTopab
                 }
                 mRefreshLayout.isRefreshing = false
                 mDataBean = forumPageBean
-                pageSize = forumPageBean.page.pageSize.toInt()
-                if (mDataBean!!.page.hasMore == "0") {
+                pageSize = forumPageBean.page?.pageSize?.toInt()!!
+                if (mDataBean!!.page?.hasMore == "0") {
                     mAdapter.loadEnd()
                 }
             }
@@ -224,7 +225,7 @@ class ForumFragment : BaseFragment(), Refreshable, OnSwitchListener, ScrollTopab
 
     override fun onSwitch(which: Int) {
         if (isGood && mDataBean != null) {
-            classifyId = mDataBean!!.forum.goodClassify[which].classId
+            classifyId = mDataBean!!.forum?.goodClassify?.get(which)?.classId!!
             refresh()
         }
     }
@@ -249,9 +250,9 @@ class ForumFragment : BaseFragment(), Refreshable, OnSwitchListener, ScrollTopab
             }
             mRefreshLayout.isRefreshing = false
             mDataBean = forumPageBean
-            pageSize = forumPageBean.page.pageSize.toInt()
+            pageSize = forumPageBean.page?.pageSize?.toInt()!!
             mAdapter.setData(forumPageBean)
-            if ("1" != mDataBean!!.page.hasMore) {
+            if ("1" != mDataBean!!.page?.hasMore) {
                 mAdapter.loadEnd()
             }
         }

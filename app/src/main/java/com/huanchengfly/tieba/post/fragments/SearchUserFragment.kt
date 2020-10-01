@@ -6,9 +6,9 @@ import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import butterknife.BindView
-import com.huanchengfly.tieba.api.TiebaApi
-import com.huanchengfly.tieba.api.models.SearchUserBean
-import com.huanchengfly.tieba.api.models.SearchUserBean.SearchUserDataBean
+import com.huanchengfly.tieba.post.api.TiebaApi
+import com.huanchengfly.tieba.post.api.models.SearchUserBean
+import com.huanchengfly.tieba.post.api.models.SearchUserBean.SearchUserDataBean
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.adapters.SearchUserAdapter
 import com.huanchengfly.tieba.post.components.MyLinearLayoutManager
@@ -78,7 +78,7 @@ class SearchUserFragment : BaseFragment() {
                 mData = searchUserDataBean
                 mAdapter!!.setData(searchUserDataBean)
                 mRefreshLayout.isRefreshing = false
-                if (searchUserDataBean.hasMore == 0) mAdapter!!.loadEnd()
+                if (searchUserDataBean?.hasMore == 0) mAdapter!!.loadEnd()
             }
 
             override fun onFailure(call: Call<SearchUserBean>, t: Throwable) {

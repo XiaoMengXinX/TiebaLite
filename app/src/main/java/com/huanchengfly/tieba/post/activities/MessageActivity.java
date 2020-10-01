@@ -9,7 +9,6 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.huanchengfly.tieba.post.R;
-import com.huanchengfly.tieba.post.activities.base.BaseActivity;
 import com.huanchengfly.tieba.post.fragments.MessageFragment;
 import com.huanchengfly.tieba.post.utils.ThemeUtil;
 
@@ -37,7 +36,8 @@ public class MessageActivity extends BaseActivity {
         }
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.activity_message_list_content, MessageFragment.newInstance(getIntent().getIntExtra("type", MessageFragment.TYPE_REPLY_ME)), MessageFragment.class.getSimpleName()).commit();
+                    .replace(R.id.activity_message_list_content,
+                            MessageFragment.newInstance(getIntent().getIntExtra("type", MessageFragment.TYPE_REPLY_ME), true), MessageFragment.class.getSimpleName()).commit();
         }
     }
 }

@@ -31,7 +31,7 @@
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <com.huanchengfly.tieba.widgets.theme.TintTextView
+            <com.huanchengfly.tieba.post.widgets.theme.TintTextView
                 android:id="@android:id/title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -42,7 +42,7 @@
                 android:ellipsize="marquee"
                 tools:ignore="PrivateResource" />
 
-            <com.huanchengfly.tieba.widgets.theme.TintTextView
+            <com.huanchengfly.tieba.post.widgets.theme.TintTextView
                 android:layout_marginTop="4dp"
                 android:id="@android:id/summary"
                 android:layout_width="wrap_content"
@@ -55,7 +55,7 @@
 
         </RelativeLayout>
 
-        <androidx.preference.UnPressableLinearLayout
+        <com.huanchengfly.tieba.post.widgets.UnPressableLinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -64,20 +64,24 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <com.huanchengfly.tieba.widgets.theme.TintSeekBar
+            <com.huanchengfly.tieba.post.widgets.theme.TintSeekBar
                 style="@style/Widget.AppCompat.SeekBar"
                 app:progressTint="@color/default_color_primary"
                 android:id="@+id/seekbar"
+                android:progressDrawable="@drawable/bg_seekbar_round"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
+                android:minHeight="16dp"
                 android:paddingStart="@dimen/preference_seekbar_padding_horizontal"
                 android:paddingEnd="@dimen/preference_seekbar_padding_horizontal"
                 android:paddingTop="@dimen/preference_seekbar_padding_vertical"
                 android:paddingBottom="@dimen/preference_seekbar_padding_vertical"
-                android:background="@null"/>
+                android:background="@null"
+                android:thumb="@null"
+                tools:ignore="PrivateResource" />
 
-            <com.huanchengfly.tieba.widgets.theme.TintTextView
+            <com.huanchengfly.tieba.post.widgets.theme.TintTextView
                 android:id="@+id/seekbar_value"
                 android:minWidth="@dimen/preference_seekbar_value_minWidth"
                 android:paddingStart="8dp"
@@ -90,9 +94,10 @@
                 android:ellipsize="marquee"
                 android:fadingEdge="horizontal"
                 app:tintList="@drawable/text_color_secondary_selector"
-                android:scrollbars="none"/>
+                android:scrollbars="none"
+                tools:ignore="PrivateResource" />
 
-        </androidx.preference.UnPressableLinearLayout>
+        </com.huanchengfly.tieba.post.widgets.UnPressableLinearLayout>
     </LinearLayout>
 
 </LinearLayout>

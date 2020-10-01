@@ -11,7 +11,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.huanchengfly.tieba.post.R;
-import com.huanchengfly.tieba.post.activities.base.BaseActivity;
 import com.huanchengfly.tieba.post.adapters.ThemeAdapter;
 import com.huanchengfly.tieba.post.utils.SharedPreferencesUtil;
 import com.huanchengfly.tieba.post.utils.ThemeUtil;
@@ -80,6 +79,12 @@ public class ThemeActivity extends BaseActivity {
             setTheme(values.get(position));
         });
         mRecyclerView.setAdapter(themeAdapter);
+        ThemeUtil.setTranslucentThemeBackground(findViewById(R.id.background));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         ThemeUtil.setTranslucentThemeBackground(findViewById(R.id.background));
     }
 
